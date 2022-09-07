@@ -12,6 +12,7 @@ my $np = Monitoring::Plugin->new(
     usage     => "Usage: %s -u|--url <http://user:pass\@host:port/url> -a|--attributes <attributes> "
         . "[ -c|--critical <thresholds> ] [ -w|--warning <thresholds> ] "
         . "[ -e|--expect <value> ] "
+        . "[ -i|--dont-expect <value> ] "
         . "[ -p|--perfvars <fields> ] "
         . "[ -o|--outputvars <fields> ] "
         . "[ -t|--timeout <timeout> ] "
@@ -192,6 +193,10 @@ foreach my $attribute (sort keys %attributes) {
 
     if (defined $np->opts->expect && $np->opts->expect ne $check_value) {
         $np->nagios_exit(CRITICAL, "Expected value (" . $np->opts->expect . ") not found. Actual: " . $check_value);
+    }
+
+    if (defined $np->opts->dont - expect && $np->opts->dont - expect eq $check_value) {
+        $np->nagios_exit(CRITICAL, "Not Expected value (" . $np->opts->dont - expect . ") found. JSON contains: " . $check_value);
     }
 
     if ( $check_value eq "true" or $check_value eq "false" ) {
