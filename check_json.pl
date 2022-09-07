@@ -12,7 +12,7 @@ my $np = Monitoring::Plugin->new(
     usage     => "Usage: %s -u|--url <http://user:pass\@host:port/url> -a|--attributes <attributes> "
         . "[ -c|--critical <thresholds> ] [ -w|--warning <thresholds> ] "
         . "[ -e|--expect <value> ] "
-        . "[ -i|--dont-expect <value> ] "
+        . "[ -i|--dontexpect <value> ] "
         . "[ -p|--perfvars <fields> ] "
         . "[ -o|--outputvars <fields> ] "
         . "[ -t|--timeout <timeout> ] "
@@ -73,7 +73,7 @@ $np->add_arg(
 );
 
 $np->add_arg(
-    spec => 'dont-expect|i=s',
+    spec => 'dontexpect|i=s',
     help => '-i, --dont-expect not expected value to see for attribute.',
 );
 
@@ -166,8 +166,15 @@ my $json_response = decode_json($response->content);
 if ($np->opts->verbose) {(print Dumper($json_response))};
 
 my @attributes = split(',', $np->opts->attributes);
-my @warning = split(',', $np->opts->warning);
+my @warning;
 my @critical = split(',', $np->opts->critical);
+if ($np->opts->warning) {
+    @warning = split(',', $np->opts->warning);
+}
+my @critical;
+if ($np->opts->critical) {
+    @critical = split(',', $np->opts->critical);
+}
 my @divisor = $np->opts->divisor ? split(',', $np->opts->divisor) : ();
 my %attributes = map {$attributes[$_] => { warning => $warning[$_], critical => $critical[$_], divisor => ($divisor[$_] or 0) }} 0 .. $#attributes;
 
@@ -195,12 +202,12 @@ foreach my $attribute (sort keys %attributes) {
         $np->nagios_exit(CRITICAL, "Expected value (" . $np->opts->expect . ") not found. Actual: " . $check_value);
     }
 
-    if (defined $np->opts->dont - expect && $np->opts->dont - expect eq $check_value) {
-        $np->nagios_exit(CRITICAL, "Not Expected value (" . $np->opts->dont - expect . ") found. JSON contains: " . $check_value);
+    if (defined $np->opts->dontexpect && $np->opts->dontexpect eq $check_value) {
+        $np->nagios_exit(CRITICAL, "Not Expected value (" . $np->opts->dontexpect . ") found. JSON contains: " . $check_value);
     }
 
     if ( $check_value eq "true" or $check_value eq "false" ) {
-       if ( $check_value eq "true") {
+        if ( $check_value eq "true") {
             $resultTmp = 0;
             if ($attributes{$attribute}{'critical'} eq 1 or $attributes{$attribute}{'critical'} eq "true") {
                 $resultTmp = 2;
@@ -243,7 +250,10 @@ if ($np->opts->perfvars) {
         # make label ascii compatible
         $label =~ s/[^a-zA-Z0-9_-]//g;
         my $perf_value;
-        $perf_value = $json_response->{$key};
+        my $perf_value_str = '$perf_value = $json_response->'.$key;
+        # $perf_value = $json_response->{$key};
+        eval $perf_value_str;
+
         if ($np->opts->verbose) {print Dumper("JSON key: " . $label . ", JSON val: " . $perf_value)};
         if (defined($perf_value)) {
             # add threshold if attribute option matches key
@@ -273,8 +283,13 @@ if ($np->opts->outputvars) {
         # make label ascii compatible
         $label =~ s/[^a-zA-Z0-9_-]//g;
         my $output_value;
-        $output_value = $json_response->{$key};
+        my $output_value_str = '$output_value = $json_response->'.$key;
         push(@statusmsg, "$label: $output_value");
+        eval $output_value_str;
+        # $output_value = $json_response->{$key};
+        if ( defined($output_value) ){
+            push(@statusmsg, "$label: $output_value");
+        }
     }
 }
 
