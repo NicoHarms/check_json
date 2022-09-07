@@ -167,7 +167,6 @@ if ($np->opts->verbose) {(print Dumper($json_response))};
 
 my @attributes = split(',', $np->opts->attributes);
 my @warning;
-my @critical = split(',', $np->opts->critical);
 if ($np->opts->warning) {
     @warning = split(',', $np->opts->warning);
 }
